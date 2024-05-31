@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 )
 
-// Define CPUInfo struct
 type CPUInfo struct {
 	SystemCPUCore                 string  `json:"system.cpu.core"`
 	SystemCPUCoreUserPercent      float64 `json:"system.cpu.core.user.percent"`

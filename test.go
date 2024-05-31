@@ -13,11 +13,16 @@ import (
 )
 
 func main() {
-	// Replace these with your own values
+
 	endpoint := "192.168.2.102"
 	username := "033-nitesh"
 	password := "9835"
 	port := 5985
+
+	// endpoint := "192.168.29.232"
+	// username := "vishwajit"
+	// password := "7008"
+	// port := 5985
 
 	// Create a WinRM client
 	endpointConfig := winrm.NewEndpoint(endpoint, port, false, false, nil, nil, nil, 0)
@@ -317,55 +322,208 @@ func main() {
 	// Convert the count string to an integer
 	countOfNoOfVolume, err := strconv.Atoi(countStringOfNoOfVolume)
 
-	InterfaceCommand10 := `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command "& {(Get-NetAdapter).Count}"`
+	// InterfaceCommand10 := `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command "& {(Get-NetAdapterStatistics).Count}"`
 
-	client.RunWithContext(ctx, InterfaceCommand10, &stdout, &stderr)
+	// client.RunWithContext(ctx, InterfaceCommand10, &stdout, &stderr)
 
-	noOfInterfaces, err := bufferToInt(stdout)
+	// fmt.Println(stdout.String())
+
+	// noOfInterfaces, err := bufferToInt(stdout)
 
 	stdout.Reset()
 	stderr.Reset()
 
-	InterfaceCommand1 := `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command "& {Get-Counter -Counter "\Network Interface(*)\Bytes Received/sec" | Select-Object -ExpandProperty CounterSamples | Select-Object -ExpandProperty CookedValue}"`
+	InterfaceCommand11 := `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command "& {Get-WmiObject Win32_NetworkAdapter | Where-Object { $_.PhysicalAdapter -eq $true } | Select-Object Name, MACAddress}"`
+
+	client.RunWithContext(ctx, InterfaceCommand11, &stdout, &stderr)
+
+	stdout.Reset()
+	stderr.Reset()
+
+	InterfaceCommand1 := `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command "& {Get-WmiObject Win32_NetworkAdapter | Where-Object { $_.PhysicalAdapter -eq $true } | Select-Object -ExpandProperty Name}"`
 
 	client.RunWithContext(ctx, InterfaceCommand1, &stdout, &stderr)
 
-	interfacesBytesPerSec := getInputBytesPerSec(stdout)
+	names := getNamesOfInterfaces(stdout)
 
 	stdout.Reset()
 	stderr.Reset()
 
-	InterfaceCommand2 := `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command "& {Get-NetAdapter | Select-Object -ExpandProperty Name}"`
+	InterfaceCommand2 := `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command "& {Get-Counter '\Network Interface(*)\Bytes Received/sec' | Select-Object -ExpandProperty CounterSamples | Where-Object {$_.InstanceName -ne '_Total'} | ForEach-Object { $_.InstanceName + ',' + $_.CookedValue }}"`
 
 	client.RunWithContext(ctx, InterfaceCommand2, &stdout, &stderr)
 
-	namesOfInterfaces := getNamesOfInterfaces(stdout)
+	namesNew, valuesNew := parseInterfaceOutput(stdout.String())
+
+	stdout.Reset()
+	stderr.Reset()
+
+	InterfaceCommand3 := `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command "& {Get-Counter '\Network Interface(*)\Output Queue Length' | Select-Object -ExpandProperty CounterSamples | Where-Object {$_.InstanceName -ne '_Total'} | ForEach-Object { $_.InstanceName + ',' + $_.CookedValue }}"`
+
+	client.RunWithContext(ctx, InterfaceCommand3, &stdout, &stderr)
+
+	namesOfOPQueueLength, valuesNewOfOPQueueLength := parseInterfaceOutput(stdout.String())
+
+	stdout.Reset()
+	stderr.Reset()
+
+	InterfaceCommand4 := `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command "& {Get-Counter '\Network Interface(*)\Packets Received/sec' | Select-Object -ExpandProperty CounterSamples | Where-Object {$_.InstanceName -ne '_Total'} | ForEach-Object { $_.InstanceName + ',' + $_.CookedValue }}"`
+
+	client.RunWithContext(ctx, InterfaceCommand4, &stdout, &stderr)
+
+	// fmt.Println("cmd 4:", stdout.String())
+
+	namesOfInterfaceInPacketsPerSec, valuesOfInterfaceInPacketsPerSec := parseInterfaceOutput(stdout.String())
+
+	stdout.Reset()
+	stderr.Reset()
+
+	InterfaceCommand5 := `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command "& {Get-Counter '\Network Interface(*)\Packets Sent/sec' | Select-Object -ExpandProperty CounterSamples | Where-Object {$_.InstanceName -ne '_Total'} | ForEach-Object { $_.InstanceName + ',' + $_.CookedValue }}"`
+
+	client.RunWithContext(ctx, InterfaceCommand5, &stdout, &stderr)
+
+	// fmt.Println("cmd 5:", stdout.String())
+
+	namesOfNetworkInterfaceOutPacketsPerSec, valuesOfNetworkInterfaceOutPacketsPerSec := parseInterfaceOutput(stdout.String())
+
+	stdout.Reset()
+	stderr.Reset()
+
+	InterfaceCommand6 := `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command "& {Get-Counter '\Network Interface(*)\Bytes Sent/sec' | Select-Object -ExpandProperty CounterSamples | Where-Object {$_.InstanceName -ne '_Total'} | ForEach-Object { $_.InstanceName + ',' + $_.CookedValue }}"`
+
+	client.RunWithContext(ctx, InterfaceCommand6, &stdout, &stderr)
+
+	// fmt.Println("cmd 6:", stdout.String())
+
+	namesOfNetworkInterfaceOutBytesPerSec, valuesOfNetworkInterfaceOutBytesPerSec := parseInterfaceOutput(stdout.String())
+
+	stdout.Reset()
+	stderr.Reset()
+
+	InterfaceCommand7 := `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command "& {Get-Counter '\Network Interface(*)\Bytes Sent/sec' | Select-Object -ExpandProperty CounterSamples | Where-Object {$_.InstanceName -ne '_Total'} | ForEach-Object { $_.InstanceName + ',' + $_.CookedValue }}"`
+
+	client.RunWithContext(ctx, InterfaceCommand7, &stdout, &stderr)
+
+	// fmt.Println("cmd 7:", stdout.String())
+
+	namesOfNetworkInterfaceBytesPerSec, valuesOfNetworkInterfaceBytesPerSec := parseInterfaceOutput(stdout.String())
+
+	///////////////////////
+
+	stdout.Reset()
+	stderr.Reset()
+
+	MemoryCommand1 := `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command "& {$totalMemory=(Get-CimInstance -ClassName Win32_ComputerSystem).TotalPhysicalMemory;$freeMemory=(Get-CimInstance -ClassName Win32_OperatingSystem).FreePhysicalMemory*1KB;$usedMemory=$totalMemory-$freeMemory;Get-WmiObject -Class Win32_PhysicalMemory | ForEach-Object {$deviceLocator=$_.DeviceLocator;$capacityBytes=$_.Capacity;$usedSpaceBytes=$capacityBytes*($usedMemory/$totalMemory);$freeSpaceBytes=$capacityBytes-$usedSpaceBytes;"$deviceLocator, $usedSpaceBytes, $freeSpaceBytes, $capacityBytes"}}"`
+
+	client.RunWithContext(ctx, MemoryCommand1, &stdout, &stderr)
+
+	fmt.Println("memory cmd 1:", stdout.String())
+
+	deviceLocators, usedSpaceBytes, freeSpaceBytes, capacityBytes := parseMemoryOutput(stdout)
+
+	// fmt.Println(deviceLocators)
+	// fmt.Println(usedSpaceBytes)
+
+	// fmt.Println(freeSpaceBytes)
+	// fmt.Println(capacityBytes)
+
+	// fmt.Println(names)
+	// fmt.Println(namesNew)
+	// fmt.Println(valuesNew)
+	// fmt.Println(valuesNewOfOPQueueLength)
+	// fmt.Println(valuesOfInterfaceInPacketsPerSec)
+	// fmt.Println(valuesOfNetworkInterfaceOutPacketsPerSec)
+	// fmt.Println(valuesOfNetworkInterfaceOutBytesPerSec)
 
 	// Create a slice to store CPU info
 	cpuInfoList := make([]CPUInfo, numLogicalProcessors)
 	diskVolumeInfoList := make([]Volume, countOfNoOfVolume)
-	interfacesList := make([]Interface, noOfInterfaces)
+	interfacesList := make([]Interface, len(names))
+	memoryList := make([]Memory, len(deviceLocators))
 
-	fmt.Println()
-	fmt.Println(len(interfacesList))
-	fmt.Println(interfacesList)
+	// for i := 0; i < len(memoryList); i++ {
+	// 	memoryList[i].SystemMemoryName = strings.TrimSpace(deviceLocators[i])
+	// 	memoryList[i].SystemMemoryUsedSpace = usedSpaceBytes[i]
+	// 	memoryList[i].SystemMemoryFreeSpace = freeSpaceBytes[i]
+	// 	memoryList[i].SystemMemoryTotalSpace = capacityBytes[i]
+	// }
 
-	for i := 0; i < noOfInterfaces; i++ {
-		interfaces := Interface{
-			SystemNetworkInterface: namesOfInterfaces[i],
-		}
-
-		if i < len(interfacesBytesPerSec) {
-			interfaces.SystemNetworkInterfaceInBytesPerSec = interfacesBytesPerSec[i]
-		}
-
-		interfacesList[i] = interfaces
+	for i := 0; i < len(memoryList); i++ {
+		memoryList[i].SystemMemoryName = strings.TrimSpace(deviceLocators[i])
+		memoryList[i].SystemMemoryUsedSpace = usedSpaceBytes[i]
+		memoryList[i].SystemMemoryFreeSpace = freeSpaceBytes[i]
+		memoryList[i].SystemMemoryTotalSpace = capacityBytes[i]
 	}
 
-	// Convert CPU info to JSON
+	memoryJSON, err := json.Marshal(memoryList)
+	if err != nil {
+		fmt.Println("Error encoding memory to JSON:", err)
+		return
+	}
+
+	fmt.Println(string(memoryJSON))
+
+	for i := 0; i < len(names); i++ {
+		interfacesList[i].SystemNetworkInterface = strings.TrimSpace(names[i])
+
+		//cheack if the name in names contains the name in namesNew as a substring
+		for j := 0; j < len(namesNew); j++ {
+			if strings.Contains(strings.ToLower(names[i]), strings.ToLower(namesNew[j])) {
+				interfacesList[i].SystemNetworkInterfaceInBytesPerSec = valuesNew[j]
+				break
+			}
+		}
+
+		for j := 0; j < len(namesOfOPQueueLength); j++ {
+
+			if strings.Contains(strings.ToLower(names[i]), strings.ToLower(namesOfOPQueueLength[j])) {
+				interfacesList[i].SystemNetworkInterfaceOutputQueueLength = valuesNewOfOPQueueLength[j]
+				fmt.Println("OP queue length inserted")
+				break
+			}
+		}
+
+		for j := 0; j < len(namesOfInterfaceInPacketsPerSec); j++ {
+
+			if strings.Contains(strings.ToLower(names[i]), strings.ToLower(namesOfInterfaceInPacketsPerSec[j])) {
+				interfacesList[i].SystemNetworkInterfaceInPacketsPerSec = valuesOfInterfaceInPacketsPerSec[j]
+				fmt.Println("In packates inserted")
+				break
+			}
+		}
+
+		for j := 0; j < len(namesOfNetworkInterfaceOutPacketsPerSec); j++ {
+
+			if strings.Contains(strings.ToLower(names[i]), strings.ToLower(namesOfNetworkInterfaceOutPacketsPerSec[j])) {
+				interfacesList[i].SystemNetworkInterfaceOutPacketsPerSec = valuesOfNetworkInterfaceOutPacketsPerSec[j]
+				fmt.Println("Out packates inserted")
+				break
+			}
+		}
+
+		for j := 0; j < len(namesOfNetworkInterfaceOutBytesPerSec); j++ {
+
+			if strings.Contains(strings.ToLower(names[i]), strings.ToLower(namesOfNetworkInterfaceOutBytesPerSec[j])) {
+				interfacesList[i].SystemNetworkInterfaceOutBytesPerSec = valuesOfNetworkInterfaceOutBytesPerSec[j]
+				fmt.Println("Out bytes inserted")
+				break
+			}
+		}
+
+		for j := 0; j < len(namesOfNetworkInterfaceBytesPerSec); j++ {
+
+			if strings.Contains(strings.ToLower(names[i]), strings.ToLower(namesOfNetworkInterfaceBytesPerSec[j])) {
+				interfacesList[i].SystemNetworkInterfaceBytesPerSec = valuesOfNetworkInterfaceBytesPerSec[j]
+				fmt.Println("Total bytes inserted")
+				break
+			}
+		}
+	}
+
+	// Convert interfacesList to JSON
 	interfacesJSON, err := json.Marshal(interfacesList)
 	if err != nil {
-		fmt.Println("Error encoding CPU info to JSON:", err)
+		fmt.Println("Error encoding interface to JSON:", err)
 		return
 	}
 
@@ -402,7 +560,7 @@ func main() {
 	// Convert CPU info to JSON
 	diskVolumeJSON, err := json.Marshal(diskVolumeInfoList)
 	if err != nil {
-		fmt.Println("Error encoding CPU info to JSON:", err)
+		fmt.Println("Error encoding volume to JSON:", err)
 		return
 	}
 
@@ -445,4 +603,23 @@ func main() {
 	}
 
 	fmt.Println(string(cpuJSON))
+
+	// Create a single Collector object with the initialized slices
+	collector := Collector{
+		Memory:    memoryList,
+		Interface: interfacesList,
+		CPU:       cpuInfoList,
+		Volume:    diskVolumeInfoList,
+	}
+
+	// Marshal the Collector object to JSON
+	jsonDataOfCollector, err := json.MarshalIndent(collector, "", "  ")
+	if err != nil {
+		fmt.Println("Error marshalling to JSON:", err)
+		return
+	}
+
+	// Print the JSON
+	fmt.Println(string(jsonDataOfCollector))
+
 }

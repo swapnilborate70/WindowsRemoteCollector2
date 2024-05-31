@@ -1,6 +1,5 @@
 package main
 
-// Define volume struct
 type Volume struct {
 	SystemDiskVolume               string  `json:"system.disk.volume"`
 	SystemDiskVolumeFreeBytes      int64   `json:"system.disk.volume.free.bytes"`
